@@ -1,4 +1,4 @@
-//% icon="\uf558" color="#60007D"
+//% icon="\uf247" color="#60007D"
 namespace tilegen {
 
     //  Given an X and Y size, returns the data that
@@ -75,10 +75,6 @@ namespace tilegen {
             this._data = data
             this._wallImage = wallImage
 
-            while (this._data.length < width * height) {
-                this._data.push(0)
-            }
-
             this.reGenTilemap()
         }
         
@@ -86,6 +82,7 @@ namespace tilegen {
         //% blockCombine block="width" callInDebugger
         set width(width: number) {
             this._width = width
+            this.reGenTilemap()
         }
 
         get width() {
@@ -96,6 +93,7 @@ namespace tilegen {
         //% blockCombine block="height" callInDebugger
         set height(height: number) {
             this._height = height
+            this.reGenTilemap()
         }
 
         get height() {
@@ -103,7 +101,7 @@ namespace tilegen {
         }
 
         //% group="saved maps" blockSetVariable="tilegenMap"
-        //% blockCombine block="data" callInDebugger
+        //% blockCombine block="map data array" callInDebugger
         set data(data: number[]) {
             this._data = data
             this.reGenTilemap()
@@ -113,10 +111,9 @@ namespace tilegen {
             return this._data
         }
         
-        //% group="saved maps" blockSetVariable="tilegenMap"
-        //% blockCombine block="wallImage" callInDebugger
         set wallImage(wallImage: Image) {
             this._wallImage = wallImage
+            this.reGenTilemap()
         }
 
         get wallImage() {
@@ -144,7 +141,10 @@ namespace tilegen {
         }
 
         reGenTilemap() {
-            this._tilemap = tiles.createTilemap(Buffer.fromArray(this._data), this._wallImage, map.tilelist, TileScale.Sixteen)
+            while (this._data.length < this._width * this._height) {
+                this._data.push(0)
+            }
+            this._tilemap = tiles.createTilemap(Buffer.fromArray([this.width, 0, this.height, 0].concat(this._data)), this._wallImage, map.tilelist, TileScale.Sixteen)
         }
     }
 
@@ -161,7 +161,7 @@ namespace tilegen {
     //% block="map with id $id exists"
     export function mapExists(id: number) {
         for (let m of map.maps) {
-            if (m.id == id) return m.tilemap
+            if (m.id == id) return true
         }
         return false
     }
@@ -177,13 +177,14 @@ namespace tilegen {
     }
 
     //% blockId=tilemapGenAddTileToTilelist
-    //% block="add tile %picture=variables_get to tilelist"
+    //% block="add tile %tile to tilelist"
+    //% tile.shadow=screen_image_picker
     export function addTile(tile: Image) {
         map.tilelist.push(tile)
     }
 
     //% blockId=tilemapGenSetTilelist
-    //% block="set tilelist to image array %list=variables_get"
+    //% block="set tilelist to image array %list"
     export function setTilelist(tiles: Image[] = []) {
         map.tilelist = tiles
     }
@@ -198,6 +199,20 @@ namespace tilegen {
     //% block="get normal tilemap $tilemap tilelist"
     export function getNormalTilemapTilelist(tilemap: tiles.TileMapData) {
         return tilemap.getTileset()
+    }
+
+    //% blockId=tilemapGenGetWallImage group="saved maps"
+    //% block="get $tilegenMap=variables_get(tilegenMap) wall image"
+    export function getWallImage(tilegenMap: map) {
+        return tilegenMap.wallImage
+    }
+
+    //% blockId=tilemapGenSetWallImage group="saved maps"
+    //% block="set $tilegenMap=variables_get(tilegenMap) wall image to $wallImage" 
+    //% wallImage.shadow=screen_image_picker
+    export function setWallImage(tilegenMap: map, wallImage: Image) {
+        tilegenMap.wallImage = wallImage
+        tilegenMap.reGenTilemap()
     }
 }
 
