@@ -6,6 +6,7 @@ namespace tilegen {
     //  of said size. See tilemap.g.ts in the Explorer 
     //  to see how that works for a normal tilemap.
 
+    export let tileScale = TileScale.Sixteen
     
     //% blockId=tilegenGenerateTilemap 
     //% block="generate tilemap with $tilelist width $width height $height data array %list wall image %wallImage"
@@ -51,7 +52,7 @@ namespace tilegen {
 
         let buffer = Buffer.fromArray(list) // Makes a buffer out of the list.
 
-        return (tiles.createTilemap(buffer, wallImage, tilelist, TileScale.Sixteen))    // Can be changed to .Eight for 8x8 tiles, but you also have to have the Arcade-tile-util extension and have created a 8x8 tilemap with it before.
+        return (tiles.createTilemap(buffer, wallImage, tilelist, tileScale))    // Can be changed to .Eight for 8x8 tiles, but you also have to have the Arcade-tile-util extension and have created a 8x8 tilemap with it before.
     }
 
 
@@ -144,7 +145,7 @@ namespace tilegen {
             while (this._data.length < this._width * this._height) {
                 this._data.push(0)
             }
-            this._tilemap = tiles.createTilemap(Buffer.fromArray([this.width, 0, this.height, 0].concat(this._data)), this._wallImage, map.tilelist, TileScale.Sixteen)
+            this._tilemap = tiles.createTilemap(Buffer.fromArray([this.width, 0, this.height, 0].concat(this._data)), this._wallImage, map.tilelist, tileScale)
         }
     }
 
