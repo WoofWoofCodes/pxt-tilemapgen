@@ -55,8 +55,6 @@ namespace tilegen {
         return (tiles.createTilemap(buffer, wallImage, tilelist, tileScale))    // Can be changed to .Eight for 8x8 tiles, but you also have to have the Arcade-tile-util extension and have created a 8x8 tilemap with it before.
     }
 
-
-    //% BlockNamespace="saved maps"
     export class map {
 
         static maps: map[] = []
@@ -202,6 +200,18 @@ namespace tilegen {
         return tilemap.getTileset()
     }
 
+    //% blockId=tilemapGenGetNormalTilemapDataArray
+    //% block="get normal tilemap $tilemap data array"
+    export function getNormalTilemapData(tilemap: tiles.TileMapData) {
+        return tilemap['data'].toArray(NumberFormat.UInt8LE).slice(4)
+    }
+
+    //% blockId=tilemapGenGetNormalTilemapWallImage
+    //% block="get normal tilemap $tilemap wall image"
+    export function getNormalTilemapWallImage(tilemap: tiles.TileMapData) {
+        return tilemap['layers']
+    }
+
     //% blockId=tilemapGenGetWallImage group="saved maps"
     //% block="get $tilegenMap=variables_get(tilegenMap) wall image"
     export function getWallImage(tilegenMap: map) {
@@ -215,6 +225,124 @@ namespace tilegen {
         tilegenMap.wallImage = wallImage
         tilegenMap.reGenTilemap()
     }
+    
+    // code from Richard on the Makecode Formum: https://forum.makecode.com/t/saving-a-60-60-tilemap/40586/8?u=woofwoof
+    
+    /**
+     * Code by Richard!
+     */
+    //% blockId=tilemapGenSaveTilemap
+    //% block="save tilemap $tilemap as $name"
+    //% group="save with settings"
+    export function saveTilemap(name: string, tilemap: tiles.TileMapData) {
+        settings.writeBuffer(name + "-data", (tilemap as any).data);
+        saveImage(name + "-layers", (tilemap as any).layers);
+
+        const tileset = tilemap.getTileset();
+        const tileByteLength = byteHeight(4, tileset[0].height) * tileset[0].width + 8
+        const tilesetByteLength = tileByteLength * tileset.length;
+
+        const tilesetBuffer = control.createBuffer(tilesetByteLength + 1);
+        tilesetBuffer[0] = tileset.length;
+
+        for (let i = 0; i < tileset.length; i++) {
+            const offset = 1 + i * tileByteLength;
+            tilesetBuffer.write(offset, imageToBuffer(tileset[i]));
+        }
+
+        settings.writeBuffer(name + "-tileset", tilesetBuffer);
+        settings.writeNumber(name + "-scale", tilemap.scale);
+    }
+
+    //% blockId=tilemapGenReadTilemap
+    //% block="tilemap with name $name"
+    //% group="save with settings"
+    export function readTilemap(name: string) {
+        const tilesetBuffer = settings.readBuffer(name + "-tileset");
+        const tilesetLength = tilesetBuffer[0]
+        const tileByteLength = (tilesetBuffer.length - 1) / tilesetLength;
+
+        const tileset: Image[] = [];
+        for (let j = 0; j <= tilesetLength - 1; j++) {
+            const offset = 1 + j * tileByteLength
+            tileset.push(bufferToImage(tilesetBuffer.slice(offset, tileByteLength)))
+        }
+        return new tiles.TileMapData(
+            settings.readBuffer(name + "-data"),
+            readImage(name + "-layers"),
+            tileset,
+            settings.readNumber(name + "-scale")
+        )
+    }
+
+    function saveImage(name: string, image: Image) {
+        settings.writeBuffer(name, imageToBuffer(image));
+    }
+
+    function readImage(name: string) {
+        return bufferToImage(settings.readBuffer(name))
+    }
+
+
+    function imageToBuffer(image: Image) {
+        return f4EncodeImg(image.width, image.height, 4, (x, y) => image.getPixel(x, y))
+    }
+
+    function bufferToImage(buf: Buffer) {
+        return image.ofBuffer(buf);
+    }
+
+    function f4EncodeImg(w: number, h: number, bpp: number, getPix: (x: number, y: number) => number) {
+        const header = [
+            0x87, bpp,
+            w & 0xff, w >> 8,
+            h & 0xff, h >> 8,
+            0, 0
+        ];
+
+        const out = control.createBuffer(header.length + byteHeight(bpp, h) * w);
+
+        for (let k = 0; k < header.length; k++) {
+            out[k] = header[k];
+        }
+
+        let index = header.length;
+        let ptr = 4
+        let curr = 0
+        let shift = 0
+
+        let pushBits = (n: number) => {
+            curr |= n << shift
+            if (shift == 8 - bpp) {
+                out[index] = curr;
+                index++;
+                ptr++
+                curr = 0
+                shift = 0
+            } else {
+                shift += bpp
+            }
+        }
+
+        for (let l = 0; l < w; ++l) {
+            for (let m = 0; m < h; ++m)
+                pushBits(getPix(l, m))
+            while (shift != 0)
+                pushBits(0)
+            if (bpp > 1) {
+                while (ptr & 3)
+                    pushBits(0)
+            }
+        }
+
+        return out
+    }
+
+    function byteHeight(bpp: number, height: number) {
+        if (bpp == 1) {
+            return (height + 7) >> 3
+        } else {
+            return ((height * 4 + 31) >> 5) << 2
+        }
+    }
 }
-
-
